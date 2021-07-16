@@ -1,0 +1,101 @@
+﻿apt-get update
+
+# 安装ifconfig
+apt-get install net-tools -y
+
+# 安装ping
+apt-get install iputils-ping -y
+
+# 安装sudo命令
+apt-get install sudo -y
+
+# 安装字符集
+locale -a 	# 查看已经安装的字符集
+apt-get install language-pack-zh-hans
+locale-gen zh_CN.UTF-8	# 添加中文支持
+
+# 临时修改字符集
+export LC_ALL='zh_CN.utf8'
+locale
+
+# 永久修改字符集
+echo export LC_ALL='zh_CN.UTF-8' >> /etc/bash.bashrc
+source /etc/bash.bashrc
+
+########################################################
+####安装并配置vsftpd
+apt-get install vsftpd -y
+cp /etc/vsftpd.conf /etc/vsftpd.conf.orig
+vim /etc/vsftpd.conf
+
+将配置文件按照下面修改
+---------------------------------------------------------------------------------
+#listen=NO 			=> listen=YES
+
+
+listen_ipv6=YES 			=> 
+listen_ipv6=NO
+# 本地用户访问
+
+#write_enable=YES 			=> write_enable=YES
+#local_umask=022 			=> local_umask=022
+#anon_mkdir_write_enable=YES 	=> anon_mkdir_write_enable=NO
+#xferlog_file=/var/log/vsftpd.log	=> xferlog_file=/var/log/vsftpd.log
+#chroot_local_user=YES		=> chroot_local_user=NO
+#chroot_list_enable=YES
+		=> chroot_list_enable=NO
+
+
+--------------------------------------------------------------------------------------
+
+groupadd ftpusers
+mkdir /home/ftpuser
+useradd -g ftpusers ftpuser
+passwd ftpuser
+vim /etc/passwd
+
+再passwd文件最后一行末尾添加
+-------------------------------------------
+/sbin/nologin
+-------------------------------------------
+
+chown -R ftpuser:ftpusers /home/ftpuser
+chmod 700 /home/ftpuser
+
+service vsftpd restart
+service vsftpd status
+netstat -nap | grep LISTEN
+
+
+########################################################
+####设置sybase
+
+# 安装libaio1
+apt-get install libaio1 -y
+
+# 设置最大共享内存
+echo "kernel.shmmax = 300000000" >> /etc/sysctl.conf
+/sbin/sysctl -p
+
+# 新增sybase用户和sybdba用户组，配置用户和权限
+adduser sybase
+groupadd -g 2000 sybdba
+usermod -aG sudo sybase
+usermod -aG sysdba sybase
+mkdir /opt/sybase_install
+chmod u+x /opt/sybase_install
+chown -R sybase:sybdba /opt/sybase_install
+cp $SYBASE_INSTALLER /opt/sybase_install/
+su - sybase
+
+tar -xvf $SYBASE_INSTALLER -c .
+
+sudo ./setup.bin -i console
+
+. /opt/sybase/SYBASE.sh
+
+chartset binary.src cp936
+
+isql64 -Usa -Ppassword -SDBSYBASE
+
+langinstall -Usa -Ppassword -SDBSYBASE chinese

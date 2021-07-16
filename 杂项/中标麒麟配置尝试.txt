@@ -1,0 +1,153 @@
+﻿版本 中标麒麟高级服务器6.8
+==============尝试1================
+# 升级内核
+rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+
+rpm -Uvh http://www.elrepl.org/elrepo-release-7.0-3.el7.elrepo.noarch.rpm  ## RHEL-7,SL-7或者CentOS-7
+rpm -Uvh http://www.elrepl.org/elrepo-release-6-8.el6.elrepo.noarch.rpm
+
+yum --enalberepo=elrepo-kernel install kernel-lt -yum
+
+vim /etc/grup.conf
+修改default=0
+reboot
+
+
+
+==============尝试2================
+wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-6.repo
+
+vim /etc/yum.repos.d/CentOS-Base.repo
+	:%s/$releasever/6/g
+	:wq
+
+yum makecache
+
+按照 https://www.cnblogs.com/osroot/p/5689362.html 执行
+在此过程中，如果执行preupg是出现错误执行下面的命令。具体原因参考http://www.oracleonlinux.cn/2017/05/how-to-upgrade-centos6-5-to-centos7/
+yum erase openscap
+yum install http://dev.centos.org/6/upg/x86_64/Packages/openscap-1.0.8-1.0.1.el6.centos.x86_64.rpm
+yum install redhat-upgrade-tool preupgrade-assistant-contents
+
+然后继续按照 https://www.cnblogs.com/osroot/p/5689362.html 后续命令执行
+
+
+
+版本 中标麒麟高级服务器7.4
+uname -a
+sudo yum install -y vim
+
+安装docker-ce
+sudo yum install -y yum-utils device-mapper-persistent-data lvm2
+sudo yum-config-manager --add-repo http://mirrors.aliyun.com/repo/Centos-7.repo
+sudo yum update -y --exclude=kernel* --exclude=neokylin-release* --exclude=initscripts
+sudo vim /etc/yum.repos.d/Centos-7.repo
+	:%s/$releasever/7/g
+sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+sudo yum install -y docker-ce docker-ce-cli containerd-io
+sudo systemctl enable docker # 设置docker服务开机启动
+sudo systemctl start docker
+sudo docker run hello-world
+不适用sudo执行docker命令
+sudo groupadd docker
+sudo usermod -aG docker $USER
+注销，然后重新登陆
+
+# 安装dotnet
+sudo rpm -Uvh https://packages.microsoft.com/config/rhel/7/packages-microsoft-prod.rpm
+sudo yum update --exclude=kernel* --exclude=neokylin-release* --exclude=initscripts
+根据情况安装不同版本的dotnet-sdk,也可以全部安装
+sudo yum install -y dotnet-sdk-2.0.0
+sudo yum install -y dotnet-sdk-2.1
+sudo yum install -y dotnet-sdk-2.2
+
+# 安装ftp
+sudo yum install -y vsftpd
+sudo systemctl enable vsftpd
+sudo yum install -y ftp # ftp客户端
+
+sudo groupadd ftpusers
+sudo useradd -m /home/ftpuser -s nologin -g ftpusers ftpusers
+sudo chown -R ftpuser:ftpusers /home/ftpuser
+sudo chmod 700 /home/ftpuser
+sudo passwd ftpuser
+sudo cp /etc/vsftpd/vsftpd.conf /etc/vsftpd/vsftpd.conf.backup
+sudo vim /etc/vsftpd/vsftpd.config
+---------------------------------------------
+	anonymous_enable=NO
+	local_enable=YES
+	write_enable=YES
+	local_umask=022
+	anon_mkdir_write_enable=NO
+	dirmessage_enable=YES
+	xferlog_enable=YES
+	connect_from_port_20=YES
+	xferlog_file=/var/log/xferlog
+	xferlog_std_format=YES
+	listen=YES
+	listen_ipv6=NO
+	pam_service_name=vsftpd
+	userlist_enable=YES
+	tcp_wrappers=YES
+	local_root=/var/ftp/pub
+	userlist_enable=YES
+	vsftpd_log_file=/var/log/vsftpd.log
+-----------------------------------------------
+sudo systemctl restart vsftpd
+
+# 安装mysql
+wget https://cdn.mysql.com/archives/mysql-5.7/mysql-5.7.24-1.el7.x86_64.rpm-bundle.tar
+mkdir ~/mysql
+tar -xvf mysql-5.7.24-1.el7.x86_64.rpm-bundle.tar -C ~/mysql
+
+yum erase mariadb-libs.x86_64
+
+sudo rpm -ivh mysql-community-common-5.7.24-1.el7.x86_64.rpm
+sudo rpm -ivh mysql-community-libs-5.7.24-1.el7.x86_64.rpm
+sudo rpm -ivh mysql-community-client-5.7.24-1.el7.x86_64.rpm
+sudo rpm -ivh mysql-community-server-5.7.24-1.el7.x86_64.rpm
+
+sudo systemctl restart mysqld
+cat /var/log/mysqld.log  | grep password # 查看安装mysql时生成的'root'@'localhost'的密码
+mysql -u root -p password  # 进入mysql客户端后更改root密码,设置root用户可以远程访问
+
+mysql>SET PASSWORD FOR 'root'@'localhost' = PASSWORD('Mysqlpassw0rd.');
+mysql>use mysql;
+mysql>update user set host='%' where user='root';
+mysql>exit
+
+sudo systemctl restart mysqld
+
+# afc通讯中间件运行环境配置
+## 重新编译安装libevnet
+sudo yum install -y gcc
+tar -zvxf libevent-2.0.22-stable.tar.gz
+cd libevent-2.0.22-stable
+./configure --prefix=/usr/libevent
+make
+sudo make install
+## 使用已经编译好的libevent（只适用于中标麒麟7.4）
+tar -zvxf libevent-bin.tar.gz
+sudo chown -R root:root libevent
+sudo cp libevent /usr
+## 创建软连接
+sudo ln -s /usr/libevent/lib/libevent-2.1.so.6 /usr/lib64/libevent-2.1.so.6
+
+
+# oracle 客户端
+sudo yum install -y zip unzip
+unzip instantclient-basic-linux.x64-11.2.0.4.0.zip
+unzip instantclient-odbc-linux.x64-11.2.0.4.0.zip
+unzip instantclient-sdk-linux.x64-11.2.0.4.0.zip
+unzip instantclient-sqlplus-linux.x64-11.2.0.4.0.zip
+unzip instantclient-tools-linux.x64-11.2.0.4.0.zip
+mdkir -p $(pwd)/instantclient_11_2/network/admin
+touch $(pwd)/instantclient_11_2/network/admin/tnsnames.ora
+sudo mkdir /usr/local/oracle
+sudo mv ~/instantclient_11_2 /usr/local/oracle
+
+echo export ORACLE_HOME=/usr/bin | sudo tee -a /etc/profile
+echo export TNS_ADMIN=$ORACLE_HOME/network/admin | sudo tee -a /etc/profile
+echo export LD_LIBRARY_PATH=$ORACLE_HOME:$LD_LIBRARY_PATH | sudo tee -a /etc/profile
+echo export NLS_LANG="AMERICAN_AMERICA.AL32UTF8" | sudo tee -a /etc/profile
+echo export PATH=$ORACLE_HOME:$PATH | sudo tee -a /etc/profile

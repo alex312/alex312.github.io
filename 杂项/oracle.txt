@@ -1,0 +1,237 @@
+#### Oracle Database Server ####
+dbzipfile=path/to/oracle/install/zip/package
+db_sid=orcl
+charset=AL32UTF8
+nvcharset=AL16UTF16
+syspwd=security
+scriptPath=/appl/bin  # 数据库启停相关脚本的位置
+etcPath=/appl/etc	  # 存放oracle.service文件
+#   获取内存页大小
+pagesize=$(getconf PAGE_SIZE)
+#   获取物理内存总量
+memtotal=$(cat /proc/meminfo | grep MemTotal | awk '{if($3=="kB"){print $2*1024} else if($3=="MB" || $3=="mB"){print $2*1024*1024} else if($3=="GB" || $3=="gB"){print $2*1024*1024*1024} else {print $2}}')
+
+#	配置/etc/sysctl.conf文件
+processcount=250
+echo "kernel.shmmax = $(($memtotal - 1))" >>/etc/sysctl.conf
+echo "kernel.shmall = $(($memtotal / $pagesize))" >>/etc/sysctl.conf
+echo "kernel.shmmni = 4096" >>/etc/sysctl.conf
+echo "kernel.sem = $(($processcount + 10)) $((($processcount + 10) * 250)) $((($processcount + 10) / 5)) 250" >>/etc/sysctl.conf
+echo "net.core.rmem_default = 262144" >>/etc/sysctl.conf
+echo "net.core.rmem_max = 4194304" >>/etc/sysctl.conf
+echo "net.core.wmem_default = 262144" >>/etc/sysctl.conf
+echo "net.core.wmem_max = 1048576" >>/etc/sysctl.conf
+echo "net.ipv4.ip_local_port_range = 9000 65000" >>/etc/sysctl.conf # 本地进程作为客户端时，可以使用的端口范围
+echo "fs.file-max = 6815744" >>/etc/sysctl.conf
+sysctl -p  # 使配置生效
+
+#	配置/etc/security/limits.conf
+echo 编辑 limits.conf
+echo "oracle soft nproc 2047" >>/etc/security/limits.conf
+echo "oracle hard nproc 16384" >>/etc/security/limits.conf
+echo "oracle soft nofile 1024" >>/etc/security/limits.conf
+echo "oracle hard nofile 65536" >>/etc/security/limits.conf
+echo "oracle soft stack 10240" >>/etc/security/limits.conf
+echo "oracle hard stack 32768" >>/etc/security/limits.conf
+
+#	配置/etc/pam.d/login
+echo pam.d login文件
+echo "session required    /lib64/security/pam_limits.so" >>/etc/pam.d/login
+
+#   配置oracle用户和用户组
+installgrp="oinstall"
+dbagrp="dba"
+opergrp="oper"
+ouser="oracle"
+groupadd $installgrp
+groupadd $dbagrp
+groupadd $opergrp
+useradd -g $installgrp -G $dbagrp,$opergrp $ouser
+passwd $ouser
+
+#   设置oracle安装相关目录
+oracle_install_prefix=/appl/oracle
+oracle_data_prefix=/data/oracle
+orabase=${oracle_install_prefix}/app
+orahome=${orabase}/12.2
+orainvhome=${oracle_install_prefix}/oraInventory
+mkdir -p $oracle_install_prefix
+mkdir -p $oracle_data_prefix
+chown -R $ouser:$installgrp $oracle_install_prefix
+chown -R $ouser:$installgrp $oracle_data_prefix
+chmod -R 775 $oracle_install_prefix
+chmod -R 775 $oracle_data_prefix
+
+#   解压oracle安装包
+unzip -u ${dbzipfile} -d $oracle_data_prefix
+
+#    设置Oracle用户的环境变量
+su - ${ouser} -c "echo 'export TMP=/tmp' >> ~/.bash_profile"
+su - ${ouser} -c "echo 'export TMPDIR=\$TMP' >> ~/.bash_profile"
+su - ${ouser} -c "echo 'export ORACLE_HOSTNAME=$(hostname)' >> ~/.bash_profile"
+su - ${ouser} -c "echo 'export ORACLE_UNQNAME=${db_sid}' >> ~/.bash_profile"
+su - ${ouser} -c "echo 'export ORACLE_BASE=${oracle_install_prefix}/app' >> ~/.bash_profile"
+su - ${ouser} -c "echo 'export ORACLE_HOME=\$ORACLE_BASE/12.2' >> ~/.bash_profile"
+su - ${ouser} -c "echo 'export TNS_ADMIN=\$ORACLE_HOME/network/admin' >> ~/.bash_profile"
+su - ${ouser} -c "echo 'export ORACLE_SID=${db_sid}' >> ~/.bash_profile"
+su - ${ouser} -c "echo 'export PATH=/usr/sbin:$PATH' >> ~/.bash_profile"
+su - ${ouser} -c "echo 'export PATH=\$ORACLE_HOME/bin:\$PATH' >> ~/.bash_profile"
+su - ${ouser} -c "echo 'export LD_LIBRARY_PATH=\$ORACLE_HOME/lib:/lib:/usr/lib' >> ~/.bash_profile"
+su - ${ouser} -c "echo 'export CLASSPATH=\$ORACLE_HOME/jlib:\$ORACLE_HOME/rdbms/jlib' >> ~/.bash_profile"
+su - ${ouser} -c "echo 'export NLS_LANG=SIMPLIFIED CHINESE.${charset}' >> ~/.bash_profile"
+
+su - ${ouser} -c "cat>>~/.bash_profile<<EOF
+if [ \$USER=\"${ouser}\" ]; then
+	if [[ \$SHELL = \"/bin/ksh\" ]]; then 
+		ulimit -p 16384
+		ulimit -n 65535
+	else
+		ulimit -u 16384 -n 65535
+	fi
+	umask 022
+fi
+EOF"
+
+#   设置oracle 静默安装响应文件
+su - ${ouser} -c "cat>~/db_install.rsp<<EOF
+oracle.install.responseFileVersion=/oracle/install/rspfmt_dbinstall_response_schema_v12.2.0
+oracle.install.option=INSTALL_DB_SWONLY
+UNIX_GROUP_NAME=${installgrp}
+INVENTORY_LOCATION=${orainvhome}
+ORACLE_HOME=${orahome}
+ORACLE_BASE=${orabase}
+oracle.install.db.InstallEdition=EE
+oracle.install.db.OSDBA_GROUP=${dbagrp}
+oracle.install.db.OSOPER_GROUP=${opergrp}
+oracle.install.db.OSBACKUPDBA_GROUP=${dbagrp}
+oracle.install.db.OSDGDBA_GROUP=${dbagrp}
+oracle.install.db.OSKMDBA_GROUP=${dbagrp}
+oracle.install.db.OSRACDBA_GROUP=${dbagrp}
+oracle.install.db.isRACOneInstall=false
+oracle.install.db.rac.serverpoolCardinality=0
+oracle.install.db.config.starterdb.type=GENERAL_PURPOSE
+oracle.install.db.config.starterdb.globalDBName=${db_sid}
+oracle.install.db.config.starterdb.SID=${db_sid}
+oracle.install.db.ConfigureAsContainerDB=false
+oracle.install.db.config.starterdb.characterSet=${charset}
+oracle.install.db.config.starterdb.memoryOption=false
+oracle.install.db.config.starterdb.installExampleSchemas=false
+oracle.install.db.config.starterdb.managementOption=DEFAULT
+oracle.install.db.config.starterdb.omsPort=0
+oracle.install.db.config.starterdb.enableRecovery=false
+SECURITY_UPDATES_VIA_MYORACLESUPPORT=false
+DECLINE_SECURITY_UPDATES=true
+EOF"
+
+#   设置创建数据库的响应文件
+su - ${ouser} -c "cat>~/dbca.rsp<<EOF
+responseFileVersion=/oracle/assistants/rspfmt_dbca_response_schema_v12.2.0
+gdbName=${db_sid}
+sid=${db_sid}
+templateName=/appl/oracle/app/12.2/assistants/dbca/templates/General_Purpose.dbc
+sysPassword=${syspwd}
+systemPassword=${syspwd}
+omsPort=0
+datafileJarLocation={ORACLE_HOME}/assistants/dbca/templates/
+datafileDestination=${oracle_data_prefix}/{DB_UNIQUE_NAME}/
+recoveryAreaDestination=${oracle_data_prefix}/fast_recovery_area/{DB_UNIQUE_NAME}
+characterSet=${charset}
+nationalCharacterSet=${nvcharset}
+listeners=LISTENER
+variables=DB_UNIQUE_NAME=${db_sid},ORACLE_BASE=${orabase},PDB_NAME=,DB_NAME=${db_sid},ORACLE_HOME=${orahome},SID=${db_sid}
+initParams=undo_tablespace=UNDOTBS1,processes=${processcount},db_recovery_file_dest_size=8016MB,nls_language=SIMPLIFIED CHINESE,dispatchers=(PROTOCOL=TCP) (SERVICE=${db_sid}XDB),db_recovery_file_dest=${oracle_data_prefix}/fast_recovery_area/{DB_UNIQUE_NAME},db_block_size=8192BYTES,diagnostic_dest={ORACLE_BASE},audit_file_dest={ORACLE_BASE}/admin/{DB_UNIQUE_NAME}/adump,nls_territory=CHINA,local_listener=LISTENER_${db_sid^^},compatible=12.2.0,control_files=(\"${oracle_data_prefix}/{DB_UNIQUE_NAME}/control01.ctl\", \"${oracle_data_prefix}/fast_recovery_area/{DB_UNIQUE_NAME}/control02.ctl\"),db_name=${db_sid},audit_trail=db,remote_login_passwordfile=EXCLUSIVE,open_cursors=300
+memoryPercentage=40
+databaseType=MULTIPURPOSE
+automaticMemoryManagement=false
+totalMemory=0
+EOF"
+
+#   安装依赖
+yum -y install unzip ntp binutils compat-libcap1 compat-libstdc++-33 compat-libstdc++-33*.i686 elfutils-libelf-devel gcc gcc-c++ glibc*.i686 glibc glibc-devel glibc-devel*.i686 ksh libgcc*.i686 libgcc libstdc++ libstdc++*.i686 libstdc++-devel libstdc++-devel*.i686 libaio libaio*.i686 libaio-devel libaio-devel*.i686 make sysstat unixODBC unixODBC*.i686 unixODBC-devel unixODBC-devel*.i686 libXp xorg-x11-utils smartmontools
+
+#   静默安装oracle
+su - ${ouser} -c "${oracle_data_prefix}/database/runInstaller -ignoreSysPrereqs -ignorePrereq -waitforcompletion -showProgress -silent -responseFile ~/db_install.rsp"
+$orainvhome/orainstRoot.sh
+$orahome/root.sh
+
+#   配置监听
+su - ${ouser} -c "netca -silent -responseFile ${oracle_data_prefix}/database/response/netca.rsp"
+
+#    删除安装文件 
+rm -rf ${oracle_data_prefix}/database
+
+#   创建数据库实例
+su - ${ouser} -c "dbca -silent -createDatabase -responseFile ~/dbca.rsp"
+
+#   配置Oracle相关脚本
+mkdir -p ${scriptPath}
+
+cat >${scriptPath}/env.sh <<EOF
+#!/bin/bash
+export ORACLE_UNQNAME=${db_sid}
+export ORACLE_BASE=${orabase}
+export ORACLE_HOME=${orahome}
+export ORACLE_SID=${db_sid}
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/root/bin
+export PATH=\$PATH:\$ORACLE_HOME/bin
+export LD_LIBRARY_PATH=\$ORACLE_HOME/lib:/lib:/usr/lib
+export CLASSPATH=\$ORACLE_HOME/jlib:\$ORACLE_HOME/rdbms/jlib
+export NLS_LANG=AMERICAN_AMERICA.AL32UTF8
+export NLS_DATE_FORMAT="yyyy-mm-dd HH24:MI:SS"
+export TNS_ADMIN=\$ORACLE_HOME/network/admin
+EOF
+
+cat >${scriptPath}/dbstart.sh<<EOF
+#!/bin/bash
+source ${scriptPath}/env.sh
+umask 022
+su - oracle -c "lsnrctl start"
+su - oracle -c "sqlplus /nolog << EOF
+set timing on
+conn / as sysdba
+startup;
+exit;
+EOF"
+EOF
+
+chmod +x ${scriptPath}/dbstart.sh
+
+cat >${scriptPath}/dbstop.sh<<EOF
+#!/bin/bash
+source ${scriptPath}/env.sh
+umask 022
+su - oracle -c "lsnrctl stop"
+su - oracle -c "sqlplus /nolog << EOF
+set timing on
+conn / as sysdba
+shutdown immediate;
+exit;
+EOF"
+EOF
+
+chmod +x ${scriptPath}/dbstop.sh
+
+# 配置systemd管理oracle
+mkdir -p ${etcPath}
+
+cat >${etcPath}/oracle.service<<EOF
+[Unit]  
+Description=Oracle Database 12c Startup/Shutdown Service  
+After=syslog.target network.target  
+  
+[Service]  
+LimitMEMLOCK=infinity  
+LimitNOFILE=65535  
+Type=oneshot  
+RemainAfterExit=yes  
+#User=oracle  
+ExecStart=${scriptPath}/dbstart.sh 
+ExecStop=${scriptPath}/dbstop.sh
+[Install]  
+WantedBy=multi-user.target
+EOF
+
+ln -s ${etcPath}/oracle.service /usr/lib/systemd/system/oracle.service
+chkconfig oracle on
+systemctl start oracle
+# View Systemd log

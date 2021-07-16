@@ -1,0 +1,6 @@
+#### Go Install For Windows ####
+下载 https://golang.google.cn/dl/go1.15.2.windows-amd64.zip
+解压到D:/Golang/go1.15.2
+创建工作目录 E:\Study\GO\{bin,src,pkg}
+添加环境变量 GOROOT="D:/Golang/go1.15.2"， GOPATH="E:\Study\GO"
+PATH环境变量中添加%GOROOT%\bin;%GOPATH%\bin

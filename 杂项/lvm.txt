@@ -1,0 +1,5 @@
+扩展LVM
+
+pvcreate /dev/sde
+vgextend nlas /dev/sde
+lvextend -l +100FREE /dev/nlas/root

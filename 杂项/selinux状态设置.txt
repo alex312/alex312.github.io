@@ -1,0 +1,26 @@
+#获取selinux状态， 命令打印三种状态
+#     enforcing - 严格执行
+#     permissive - 只报警
+#     disabled - 不启动
+getenforce 
+
+# 修改selinux状态，重启后恢复初始状态
+# 进入 permissive 状态
+setenforce 0  
+# 进入 enforcing 状态
+setenforce 1  
+
+# 永久修改selinux状态，重启后生效
+vim /etc/selinux/config
+
+# 修改SELINUX的值
+# 修改为enforcing状态
+SELINUX=enforcing
+
+# 修改为permissive状态
+SELINUX=permissive
+
+# 修改为disabled状态
+SELINUX=disabled
+
+

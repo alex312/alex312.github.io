@@ -1,0 +1,13 @@
+必备软件：
+vs2010: \\109.52.36.112\Software\Develop\VSNET\VS2010
+git:	\\109.52.36.112\Software\Develop\版本管理\Git-2.16.2-64-bit.exe
+oracle_instantclient:\\109.52.36.112\Software\Develop\Oracle\instantclient\for-win\11.2.0.4_x86
+plsql developer: \\109.52.36.112\Software\Develop\第三方数据库工具\PLSQL_Developer8.0.zip
+NotePad++或其他文本工具: \\109.52.36.112\Software\Text_Edit
+Office：\\109.52.36.112\Software\Office 或者 \\109.52.36.112\Software\office2016正式版激活（绿色版）
+
+
+青岛AFC标准：\\109.52.36.112\share\青岛AFC标准\城市轨道交通自动售检票系统技术规范-WORD\城市轨道交通自动售检票系统技术规范-WORD\城市轨道交通自动售检票系统技术规范（第4部分）-系统接口规范.doc
+
+青岛8号线项目文档：\\109.52.36.112\share\青岛地铁8号线AFC项目
+

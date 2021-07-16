@@ -1,0 +1,6 @@
+代码中的几种标记：
+note: 说明 #007ACC
+todo: 代办 #8CDCFE
+refac: 重构 blue,green,yello,red
+debug：存在BUG，需要调试找到原因
+fixme：错误代码，影响运行	red

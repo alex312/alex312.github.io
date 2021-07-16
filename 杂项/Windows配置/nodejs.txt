@@ -1,0 +1,17 @@
+nodejs 安装和配置
+
+windows 下zip包安装
+下载zip包
+在D:创建目录nodejs
+在D:\nodejs中创建目录v<NodeJSVersion>目录
+在D:\nodejs\v<NodeJSVersion>中创建目录global和cache
+解压，将解压后得到的目录中的文件拷贝到D:\nodejs\v<NodeJSVersion>
+添加系统环境变量 NODE_HOME=D:\nodejs
+添加系统环境变量 NODE_VERSION=v<NodeJSVersion>
+系统的PATH环境变量中追加 %NODE_HOME%\%NODE_VERSION%
+系统的PATH环境变量中追加 %NODE_HOME%\%NODE_VERSION%\global
+
+更换源
+npm install -g cnpm -registry=https://registry.npm.taobao.org
+或者
+npm config set registry https://registry.npm.taobao.org

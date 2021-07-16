@@ -1,0 +1,4 @@
+Your Server IP        :  45.63.27.182 
+Your Server Port      :  61018 
+Your Password         :  &*!@qaZwsXalex 
+Your Encryption Method:  aes-256-cfb 

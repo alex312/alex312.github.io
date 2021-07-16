@@ -1,0 +1,35 @@
+## 使用root登录
+
+1. 创建新的ftp根目录
+# mkdir /data/ftproot
+
+2. 编辑ftpuser的配置文件
+# vim /etc/vsftpd/vuser_conf/ftpuser
+	local_root=/var/ftp/pub     # 将这一行修改为 local_root=/data/ftproot
+	write_enable=YES
+	anon_umask=022
+	anon_world_readable_only=NO
+	anon_upload_enable=YES
+	anon_mkdir_write_enable=YES
+	anon_other_write_enable=YES
+	allow_writeable_chroot=YES
+	
+保存并退出编辑文件
+
+3. 重启ftp服务
+# systemctl restart vsftpd
+
+4. 修改/appl/AppConfig.xml
+# vim /appl/AppConfig.xml
+
+<configs>
+....
+<fileDir>
+	....
+    <ftpRootDir>/var/ftp/pub</ftpRootDir>	# 修改为  <ftpRootDir>/data/ftproot</ftpRootDir>
+    ....
+    <apsParaFileDir>/var/ftp/pub/parameter</apsParaFileDir>    修改为<apsParaFileDir>/data/ftproot/parameter</apsParaFileDir>
+    ....
+  </fileDir>
+....
+</configs>

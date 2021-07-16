@@ -1,0 +1,5 @@
+访问：http://github.global.ssl.fastly.net.ipaddress.com/#ipinfo 获取cdn和ip域名，得到：199.232.69.194 https://github.global.ssl.fastly.net
+访问：https://github.com.ipaddress.com/#ipinfo 获取cdn和ip，得到：140.82.112.4 http://github.com
+再C:\Windows\System32\drivers\etc\hosts文件中添加
+199.232.69.194 https://github.global.ssl.fastly.net
+140.82.112.4 http://github.com
