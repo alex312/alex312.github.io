@@ -1,0 +1,19 @@
+{
+  "name": "lxnote",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alex312/alex312.github.io.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/alex312/alex312.github.io/issues"
+  },
+  "homepage": "https://github.com/alex312/alex312.github.io#readme"
+}

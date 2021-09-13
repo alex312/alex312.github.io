@@ -1,3 +1,3 @@
-unzip -l $dbzip | sed -n '4p' | awk '{print $NF}' 获取zip包中的根目录
-resize2fs  mountpoint  # 对挂载目录在线扩容，针对文件系统ext2 ext3 ext4
-xfs_growfs mountpoint  #对挂载目录在线扩容，针对文件系统xfs
+unzip -l $dbzip | sed -n '4p' | awk '{print $NF}' 鑾峰彇zip鍖呬腑鐨勬牴鐩綍
+resize2fs  mountpoint  # 瀵规寕杞界洰褰曞湪绾挎墿瀹癸紝閽堝鏂囦欢绯荤粺ext2 ext3 ext4
+xfs_growfs mountpoint  #瀵规寕杞界洰褰曞湪绾挎墿瀹癸紝閽堝鏂囦欢绯荤粺xfs
